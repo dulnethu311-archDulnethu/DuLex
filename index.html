@@ -6,6 +6,7 @@
     <title>Exclusive Global Deals | Your Affiliate Shop</title>
     
     <style>
+        /* ... [CSS Styles are the same] ... */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
@@ -51,7 +52,7 @@
             color: #555;
             margin-bottom: 15px;
             text-align: left;
-            flex-grow: 1; /* Allows description area to expand */
+            flex-grow: 1; 
         }
         .price {
             color: #b12704; 
@@ -112,10 +113,11 @@
                     });
                 }
                 
-                // --- Transform Entry data, using the new 'description' field ID ---
+                // --- Transform Entry data, using the corrected 'image' field ID ---
                 const products = data.items.map(item => {
-                    // Assuming 'productImage' is the ID for the Media Asset link
-                    const imageId = item.fields.productImage ? item.fields.productImage.sys.id : null;
+                    
+                    // ⚠️ CHANGE HERE: Using the correct 'image' field ID
+                    const imageId = item.fields.image ? item.fields.image.sys.id : null;
                     const imageUrlPath = imageId ? assetMap.get(imageId) : null;
 
                     return {
@@ -124,9 +126,8 @@
                          imageUrl: imageUrlPath ? `https:${imageUrlPath}` : null, 
                          affiliateLink: item.fields.affiliateLink,
                          
-                         // ⚠️ CHANGE HERE: Using the new 'description' field ID
+                         // Using 'description' field ID (as previously corrected)
                          description: item.fields.description || 'No description available.',
-                         // Assuming 'imageAltText' is the ID for the Alt Text field
                          altText: item.fields.imageAltText || item.fields.productName || 'Product Image'
                     };
                 });
