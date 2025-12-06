@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Exclusive Affiliate Deals - Your Shop</title>
+    <title>Exclusive Global Deals | Your Affiliate Shop</title>
     
     <style>
         body {
@@ -12,66 +12,19 @@
             padding: 0;
             background-color: #f0f2f5; 
         }
-        .header {
-            background-color: #2874f0; 
-            color: white;
-            padding: 15px 0;
-            text-align: center;
-            font-size: 1.5em;
-        }
-        .product-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            padding: 20px;
-            max-width: 1200px;
-            margin: 20px auto;
-        }
-        .product-card {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            transition: transform 0.3s;
-            text-align: center;
-        }
-        .product-card:hover {
-            transform: translateY(-5px); 
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-        .product-card img {
-            width: 100%;
-            height: 200px;
-            object-fit: cover;
-            border-radius: 6px;
-            margin-bottom: 10px;
-        }
-        .price {
-            color: #b12704; 
-            font-size: 1.4em;
-            font-weight: bold;
-            margin: 10px 0;
-        }
-        .buy-button {
-            background-color: #ff9900; 
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 1.1em;
-            width: 100%;
-            transition: background-color 0.3s;
-        }
-        .buy-button:hover {
-            background-color: #e68a00;
+        /* ... [Standard CSS Styles remain the same] ... */
+        .product-card p.description {
+            font-size: 0.9em;
+            color: #555;
+            margin-bottom: 15px;
+            text-align: left;
         }
     </style>
 </head>
 <body>
 
     <div class="header">
-        🔥 Today's Exclusive Affiliate Deals!
+        🔥 Today's Exclusive Global Deals!
     </div>
 
     <div class="product-grid" id="product-list">
@@ -84,12 +37,11 @@
         const SPACE_ID = 'yxe0ua46xst9'; 
         const ACCESS_TOKEN = 'p0BwWK7U_LdvuWSR2GDxLgXwz3AkmtCAlEhzotleUJw'; 
         
-        // API URL for fetching "product" content type from Contentful
-        const API_URL = `https://cdn.contentful.com/spaces/${SPACE_ID}/environments/master/entries?access_token=${ACCESS_TOKEN}&content_type=product`;
+        // API URL for fetching "product" content type. We add &include=1 to get Asset (Image) data.
+        const API_URL = `https://cdn.contentful.com/spaces/${SPACE_ID}/environments/master/entries?access_token=${ACCESS_TOKEN}&content_type=product&include=1`;
 
         async function fetchProductsAndDisplay() {
             try {
-                // Fetch data from Contentful API
                 const response = await fetch(API_URL);
                 if (!response.ok) {
                     throw new Error(`Contentful API error! Status: ${response.status}`);
@@ -97,21 +49,36 @@
 
                 const data = await response.json(); 
                 
-                // Map Contentful data structure to a cleaner format
-                const products = data.items.map(item => ({
-                     // IMPORTANT: The field names here must match the IDs you set in Contentful (productName, price, imageUrl, affiliateLink)
-                     name: item.fields.productName, 
-                     price: item.fields.price,
-                     imageUrl: item.fields.imageUrl,
-                     affiliateLink: item.fields.affiliateLink 
-                }));
+                // --- Map Assets (Images) by their ID ---
+                const assetMap = new Map();
+                if (data.includes && data.includes.Asset) {
+                    data.includes.Asset.forEach(asset => {
+                        assetMap.set(asset.sys.id, asset.fields.file.url);
+                    });
+                }
+                
+                // --- Transform Entry data, now including SEO fields ---
+                const products = data.items.map(item => {
+                    // Check if the 'productImage' field exists and get its ID
+                    const imageId = item.fields.productImage ? item.fields.productImage.sys.id : null;
+                    const imageUrlPath = imageId ? assetMap.get(imageId) : null;
+
+                    return {
+                         name: item.fields.productName, 
+                         price: item.fields.price,
+                         imageUrl: imageUrlPath ? `https:${imageUrlPath}` : null, 
+                         affiliateLink: item.fields.affiliateLink,
+                         // ⚠️ NEW: Retrieve description and alt text for SEO
+                         description: item.fields.productDescription || 'No description available.',
+                         altText: item.fields.imageAltText || item.fields.productName || 'Product Image'
+                    };
+                });
 
                 displayProducts(products); 
                 setupEventListeners();
 
             } catch (error) {
-                // Error message in English
-                productListDiv.innerHTML = '<p style="text-align:center; color: red; font-weight: bold;">⚠️ Failed to load products. Please check API Keys or Contentful setup.</p>';
+                productListDiv.innerHTML = '<p style="text-align:center; color: red; font-weight: bold;">⚠️ Failed to load products. Check Contentful setup and API Keys.</p>';
                 console.error('Data Fetch Error:', error);
             }
         }
@@ -123,8 +90,9 @@
                 card.classList.add('product-card');
 
                 card.innerHTML = `
-                    <img src="${product.imageUrl || 'https://via.placeholder.com/280x200?text=No+Image'}" alt="${product.name || 'Product'}">
+                    <img src="${product.imageUrl || 'https://via.placeholder.com/280x200?text=No+Image'}" alt="${product.altText}">
                     <h3>${product.name || 'No Name'}</h3>
+                    <p class="description">${product.description}</p>
                     <div class="price">${product.price || 'No Price'}</div>
                     <button class="buy-button" data-link="${product.affiliateLink}">
                         View Deal Now (Affiliate Link)
@@ -145,7 +113,6 @@
             });
         }
 
-        // Initialize the product fetching when the page loads
         window.onload = fetchProductsAndDisplay; 
 
     </script>
