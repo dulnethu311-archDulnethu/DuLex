@@ -6,7 +6,6 @@
     <title>Exclusive Global Deals | Your Affiliate Shop</title>
     
     <style>
-        /* ... [CSS Styles are the same] ... */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
@@ -89,18 +88,27 @@
     <script>
         const productListDiv = document.getElementById('product-list');
 
-        // ⚠️ Contentful API Keys (Provided by you) ⚠️
+        // ⚠️ Contentful API Keys (These must be 100% accurate) ⚠️
         const SPACE_ID = 'yxe0ua46xst9'; 
         const ACCESS_TOKEN = 'p0BwWK7U_LdvuWSR2GDxLgXwz3AkmtCAlEhzotleUJw'; 
         
-        // API URL for fetching "product" content type. We add &include=1 to get Asset (Image) data.
+        // Ensure content_type is correct (assuming 'product' as Model ID)
         const API_URL = `https://cdn.contentful.com/spaces/${SPACE_ID}/environments/master/entries?access_token=${ACCESS_TOKEN}&content_type=product&include=1`;
 
         async function fetchProductsAndDisplay() {
             try {
                 const response = await fetch(API_URL);
+                
+                // 🛑 API Response Error Check (Key check is crucial here)
                 if (!response.ok) {
-                    throw new Error(`Contentful API error! Status: ${response.status}`);
+                    // Check for common Contentful errors (e.g., 401 Unauthorized)
+                    if (response.status === 401) {
+                         throw new Error("401 Unauthorized. Check your ACCESS_TOKEN in the code.");
+                    } else if (response.status === 404) {
+                         throw new Error("404 Not Found. Check your SPACE_ID or content_type ('product') in the code.");
+                    } else {
+                         throw new Error(`Contentful API error! Status: ${response.status}`);
+                    }
                 }
 
                 const data = await response.json(); 
@@ -113,10 +121,10 @@
                     });
                 }
                 
-                // --- Transform Entry data, using the corrected 'image' field ID ---
+                // --- Transform Entry data, using corrected field IDs ---
                 const products = data.items.map(item => {
                     
-                    // ⚠️ CHANGE HERE: Using the correct 'image' field ID
+                    // ⚠️ Using the 'image' field ID for the image link (as discussed)
                     const imageId = item.fields.image ? item.fields.image.sys.id : null;
                     const imageUrlPath = imageId ? assetMap.get(imageId) : null;
 
@@ -126,17 +134,23 @@
                          imageUrl: imageUrlPath ? `https:${imageUrlPath}` : null, 
                          affiliateLink: item.fields.affiliateLink,
                          
-                         // Using 'description' field ID (as previously corrected)
+                         // Using 'description' field ID
                          description: item.fields.description || 'No description available.',
                          altText: item.fields.imageAltText || item.fields.productName || 'Product Image'
                     };
                 });
+                
+                if (products.length === 0) {
+                    productListDiv.innerHTML = '<p style="text-align:center; font-weight: bold;">No products found. Did you publish the entries in Contentful?</p>';
+                    return;
+                }
 
                 displayProducts(products); 
                 setupEventListeners();
 
             } catch (error) {
-                productListDiv.innerHTML = '<p style="text-align:center; color: red; font-weight: bold;">⚠️ Failed to load products. Check Contentful setup and API Keys.</p>';
+                // Display specific error message to the user
+                productListDiv.innerHTML = `<p style="text-align:center; color: red; font-weight: bold;">⚠️ Failed to load products. ${error.message}</p>`;
                 console.error('Data Fetch Error:', error);
             }
         }
